@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize the bot with your token
-REMINDER_BOT_TOKEN = os.getenv('REMINDER_BOT_TOKEN')
+REMINDER_BOT_TOKEN = os.getenv('TOKEN')
 bot = telebot.TeleBot(REMINDER_BOT_TOKEN)
 
 # Path to the file where user IDs will be stored
