@@ -1,11 +1,14 @@
 import telebot
 import schedule
 import time
+import threading
 import logging
 import json
 import os
+from flask import Flask
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from datetime import datetime
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +32,7 @@ REMINDER_MESSAGE = """
 قم بجمع العملات الآن ولا تفوت الفرصة! 🏃‍♂️🏃‍♀️
 """
 
+
 # Load user data
 def load_user_data():
     try:
@@ -37,10 +41,12 @@ def load_user_data():
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
+
 # Save user data
 def save_user_data(user_ids):
     with open(USER_DATA_FILE, 'w') as file:
         json.dump(user_ids, file)
+
 
 # Add user to notification list
 def add_user(user_id):
@@ -52,6 +58,7 @@ def add_user(user_id):
     else:
         logger.info(f"User {user_id} is already in the notification list.")
 
+
 # Remove user from notification list
 def remove_user(user_id):
     user_ids = load_user_data()
@@ -62,6 +69,7 @@ def remove_user(user_id):
     else:
         logger.info(f"User {user_id} is not in the notification list.")
 
+
 # Handle /start command
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -69,17 +77,24 @@ def send_welcome(message):
     accept_button = InlineKeyboardButton("نعم", callback_data="accept")
     decline_button = InlineKeyboardButton("لا", callback_data="decline")
     markup.add(accept_button, decline_button)
-    bot.send_message(message.chat.id, "مرحباً! هل ترغب في تلقي إشعارات لجمع العملات؟", reply_markup=markup)
+    bot.send_message(message.chat.id,
+                     "مرحباً! هل ترغب في تلقي إشعارات لجمع العملات؟",
+                     reply_markup=markup)
+
 
 # Handle callback queries from inline buttons
 @bot.callback_query_handler(func=lambda call: True)
 def handle_query(call):
     if call.data == "accept":
         add_user(call.message.chat.id)
-        bot.send_message(call.message.chat.id, "تم تفعيل الإشعارات اليومية لجمع العملات! ستتلقى تذكيراً يومياً.")
+        bot.send_message(
+            call.message.chat.id,
+            "تم تفعيل الإشعارات اليومية لجمع العملات! ستتلقى تذكيراً يومياً.")
     elif call.data == "decline":
-        bot.send_message(call.message.chat.id, "تم إلغاء تفعيل الإشعارات لجمع العملات.")
+        bot.send_message(call.message.chat.id,
+                         "تم إلغاء تفعيل الإشعارات لجمع العملات.")
     bot.answer_callback_query(call.id)
+
 
 # Send reminder to all users in the notification list
 def send_reminder():
@@ -91,17 +106,20 @@ def send_reminder():
         except Exception as e:
             logger.error(f"Error sending reminder to user {user_id}: {str(e)}")
 
+
 # Schedule the reminder to be sent every day at a specific time
 schedule.every().day.at("10:00").do(send_reminder)
+
 
 def run_scheduler():
     while True:
         schedule.run_pending()
         time.sleep(1)
 
+
 if __name__ == "__main__":
     logger.info("Starting reminder bot...")
-    # Send reminder immediately for testing purposes
+
     send_reminder()
     threading.Thread(target=run_scheduler).start()
     bot.polling(none_stop=True)
