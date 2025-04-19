@@ -9,7 +9,6 @@ from flask import Flask
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from datetime import datetime
 
-
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,11 +26,10 @@ REMINDER_MESSAGE = """
 
 لا تنسى الدخول إلى الرابط التالي لجمع العملات اليومية والاستفادة من الخصومات:
 
-🔗 [جمع العملات](https://s.click.aliexpress.com/e/_olokZEJ)
+🔗 [جمع العملات](https://s.click.aliexpress.com/e/_olaVDaR)
 
 قم بجمع العملات الآن ولا تفوت الفرصة! 🏃‍♂️🏃‍♀️
 """
-
 
 # Load user data
 def load_user_data():
@@ -41,12 +39,10 @@ def load_user_data():
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
-
 # Save user data
 def save_user_data(user_ids):
     with open(USER_DATA_FILE, 'w') as file:
         json.dump(user_ids, file)
-
 
 # Add user to notification list
 def add_user(user_id):
@@ -58,7 +54,6 @@ def add_user(user_id):
     else:
         logger.info(f"User {user_id} is already in the notification list.")
 
-
 # Remove user from notification list
 def remove_user(user_id):
     user_ids = load_user_data()
@@ -68,7 +63,6 @@ def remove_user(user_id):
         logger.info(f"User {user_id} removed from notification list.")
     else:
         logger.info(f"User {user_id} is not in the notification list.")
-
 
 # Handle /start command
 @bot.message_handler(commands=['start'])
@@ -80,7 +74,6 @@ def send_welcome(message):
     bot.send_message(message.chat.id,
                      "مرحباً! هل ترغب في تلقي إشعارات لجمع العملات؟",
                      reply_markup=markup)
-
 
 # Handle callback queries from inline buttons
 @bot.callback_query_handler(func=lambda call: True)
@@ -95,7 +88,6 @@ def handle_query(call):
                          "تم إلغاء تفعيل الإشعارات لجمع العملات.")
     bot.answer_callback_query(call.id)
 
-
 # Send reminder to all users in the notification list
 def send_reminder():
     user_ids = load_user_data()
@@ -106,20 +98,32 @@ def send_reminder():
         except Exception as e:
             logger.error(f"Error sending reminder to user {user_id}: {str(e)}")
 
-
 # Schedule the reminder to be sent every day at a specific time
 schedule.every().day.at("10:00").do(send_reminder)
 
-
+# Scheduler loop
 def run_scheduler():
     while True:
         schedule.run_pending()
         time.sleep(1)
 
+# Create a simple Flask app for Render's port requirement
+app = Flask(__name__)
 
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+# Main entry point
 if __name__ == "__main__":
     logger.info("Starting reminder bot...")
 
-    send_reminder()
+    # Start scheduler thread
     threading.Thread(target=run_scheduler).start()
-    bot.polling(none_stop=True)
+
+    # Start bot polling in a separate thread
+    threading.Thread(target=lambda: bot.polling(none_stop=True)).start()
+
+    # Start Flask server to bind to a port for Render
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
